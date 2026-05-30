@@ -64,6 +64,11 @@ def json_resp(data, status: int = 200) -> web.Response:
     )
 
 def require_auth(request: web.Request) -> Optional[dict]:
+    # 1) Bearer token in Authorization header (cross-origin dashboard)
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        return session_get(auth_header[7:])
+    # 2) Cookie fallback (same-origin)
     token = request.cookies.get(SESSION_COOKIE)
     return session_get(token) if token else None
 
@@ -152,10 +157,8 @@ async def auth_callback(request: web.Request) -> web.Response:
          "discriminator": user.get("discriminator", "0"), "globalName": user.get("global_name")}
     token = session_create(u, at)
 
-    resp = web.HTTPFound(f"{back}/servers")
-    resp.set_cookie(SESSION_COOKIE, token, max_age=7*24*3600, httponly=True,
-                    samesite="None" if IS_PROD else "Lax", secure=IS_PROD, path="/")
-    return resp
+    # Pass token via URL — cookies don't work cross-origin (HTTP API ↔ HTTPS dashboard)
+    raise web.HTTPFound(f"{back}/servers?_token={token}")
 
 async def auth_me(request: web.Request) -> web.Response:
     sess = require_auth(request)
@@ -164,7 +167,9 @@ async def auth_me(request: web.Request) -> web.Response:
     return json_resp(sess["user"])
 
 async def auth_logout(request: web.Request) -> web.Response:
-    token = request.cookies.get(SESSION_COOKIE)
+    # Accept Bearer token (cross-origin) or cookie (same-origin)
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header[7:] if auth_header.startswith("Bearer ") else request.cookies.get(SESSION_COOKIE)
     if token:
         session_delete(token)
     resp = json_resp({"ok": True})
