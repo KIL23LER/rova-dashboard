@@ -2,6 +2,8 @@ import { Button } from "@/components/ui/button";
 import { useGetBotStats } from "@workspace/api-client-react";
 import { Bot, Shield, Zap, Activity } from "lucide-react";
 
+const API_BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
+
 export default function Landing() {
   const { data: stats } = useGetBotStats();
 
@@ -14,7 +16,7 @@ export default function Landing() {
           <span className="font-bold text-xl tracking-tight">Rova</span>
         </div>
         <Button asChild className="font-semibold shadow-md">
-          <a href="/api/auth/discord">Login with Discord</a>
+          <a href={`${API_BASE}/api/auth/discord`}>Login with Discord</a>
         </Button>
       </header>
 
@@ -39,7 +41,7 @@ export default function Landing() {
           
           <div className="flex flex-col sm:flex-row gap-4 relative z-10">
             <Button size="lg" asChild className="text-base h-14 px-8 font-semibold shadow-lg shadow-primary/20">
-              <a href="/api/auth/discord">Get Started</a>
+              <a href={`${API_BASE}/api/auth/discord`}>Get Started</a>
             </Button>
             <Button size="lg" variant="outline" asChild className="text-base h-14 px-8">
               <a href="#features">Explore Features</a>
