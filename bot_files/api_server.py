@@ -460,9 +460,16 @@ def create_app() -> web.Application:
         ("DELETE", "/api/guilds/{guildId}/commands/{trigger}", commands_delete),
         ("GET",    "/api/guilds/{guildId}/giveaways",          giveaways_get),
     ]
+    # Group by path so each resource is added once (aiohttp_cors requirement)
+    from collections import defaultdict
+    by_path = defaultdict(list)
     for method, path, handler in routes:
+        by_path[path].append((method, handler))
+
+    for path, method_handlers in by_path.items():
         resource = cors.add(app.router.add_resource(path))
-        cors.add(resource.add_route(method, handler))
+        for method, handler in method_handlers:
+            cors.add(resource.add_route(method, handler))
     return app
 
 
