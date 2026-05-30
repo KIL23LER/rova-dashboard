@@ -1,22 +1,24 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Rova Bot Dashboard API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: auth
+  - name: guilds
+  - name: settings
+  - name: bot
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +26,1149 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── Auth ──────────────────────────────────────────────────────────────────
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user or null
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthUser"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  # ── Bot Stats ─────────────────────────────────────────────────────────────
+  /bot/stats:
+    get:
+      operationId: getBotStats
+      tags: [bot]
+      summary: Get bot statistics
+      responses:
+        "200":
+          description: Bot statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BotStats"
+
+  # ── Guilds ────────────────────────────────────────────────────────────────
+  /guilds:
+    get:
+      operationId: getGuilds
+      tags: [guilds]
+      summary: Get user guilds where bot is present
+      responses:
+        "200":
+          description: List of guilds
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Guild"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /guilds/{guildId}:
+    get:
+      operationId: getGuild
+      tags: [guilds]
+      summary: Get guild info (channels + roles)
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Guild detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuildDetail"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  # ── General Settings ──────────────────────────────────────────────────────
+  /guilds/{guildId}/settings:
+    get:
+      operationId: getGuildSettings
+      tags: [settings]
+      summary: Get general guild settings
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Guild settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuildSettings"
+    patch:
+      operationId: updateGuildSettings
+      tags: [settings]
+      summary: Update general guild settings
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GuildSettingsInput"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GuildSettings"
+
+  # ── Welcome ───────────────────────────────────────────────────────────────
+  /guilds/{guildId}/welcome:
+    get:
+      operationId: getWelcomeConfig
+      tags: [settings]
+      summary: Get welcome config
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Welcome config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WelcomeConfig"
+    patch:
+      operationId: updateWelcomeConfig
+      tags: [settings]
+      summary: Update welcome config
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WelcomeConfigInput"
+      responses:
+        "200":
+          description: Updated welcome config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WelcomeConfig"
+
+  # ── Leave ─────────────────────────────────────────────────────────────────
+  /guilds/{guildId}/leave:
+    get:
+      operationId: getLeaveConfig
+      tags: [settings]
+      summary: Get leave config
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Leave config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaveConfig"
+    patch:
+      operationId: updateLeaveConfig
+      tags: [settings]
+      summary: Update leave config
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LeaveConfigInput"
+      responses:
+        "200":
+          description: Updated leave config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaveConfig"
+
+  # ── Protection ────────────────────────────────────────────────────────────
+  /guilds/{guildId}/protection:
+    get:
+      operationId: getProtectionConfig
+      tags: [settings]
+      summary: Get protection config
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Protection config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProtectionConfig"
+    patch:
+      operationId: updateProtectionConfig
+      tags: [settings]
+      summary: Update protection config
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProtectionConfigInput"
+      responses:
+        "200":
+          description: Updated protection config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProtectionConfig"
+
+  # ── Anti-Nuke ─────────────────────────────────────────────────────────────
+  /guilds/{guildId}/antinuke:
+    get:
+      operationId: getAntinukeConfig
+      tags: [settings]
+      summary: Get anti-nuke config
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Anti-nuke config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AntinukeConfig"
+    patch:
+      operationId: updateAntinukeConfig
+      tags: [settings]
+      summary: Update anti-nuke config
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AntinukeConfigInput"
+      responses:
+        "200":
+          description: Updated anti-nuke config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AntinukeConfig"
+
+  # ── Leveling ──────────────────────────────────────────────────────────────
+  /guilds/{guildId}/leveling:
+    get:
+      operationId: getLevelingConfig
+      tags: [settings]
+      summary: Get leveling config
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Leveling config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LevelingConfig"
+    patch:
+      operationId: updateLevelingConfig
+      tags: [settings]
+      summary: Update leveling config
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LevelingConfigInput"
+      responses:
+        "200":
+          description: Updated leveling config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LevelingConfig"
+
+  /guilds/{guildId}/leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [settings]
+      summary: Get XP leaderboard
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Leaderboard entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+
+  # ── Tickets ───────────────────────────────────────────────────────────────
+  /guilds/{guildId}/tickets:
+    get:
+      operationId: getTicketsConfig
+      tags: [settings]
+      summary: Get tickets config
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Tickets config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketsConfig"
+    patch:
+      operationId: updateTicketsConfig
+      tags: [settings]
+      summary: Update tickets config
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TicketsConfigInput"
+      responses:
+        "200":
+          description: Updated tickets config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TicketsConfig"
+
+  # ── Suggestions ───────────────────────────────────────────────────────────
+  /guilds/{guildId}/suggestions:
+    get:
+      operationId: getSuggestionsConfig
+      tags: [settings]
+      summary: Get suggestions config
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Suggestions config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuggestionsConfig"
+    patch:
+      operationId: updateSuggestionsConfig
+      tags: [settings]
+      summary: Update suggestions config
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SuggestionsConfigInput"
+      responses:
+        "200":
+          description: Updated suggestions config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuggestionsConfig"
+
+  # ── Auto-roles ────────────────────────────────────────────────────────────
+  /guilds/{guildId}/autoroles:
+    get:
+      operationId: getAutoroles
+      tags: [settings]
+      summary: Get auto-roles list
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Auto-roles list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Autorole"
+    post:
+      operationId: addAutorole
+      tags: [settings]
+      summary: Add auto-role
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutoroleInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  /guilds/{guildId}/autoroles/{roleId}:
+    delete:
+      operationId: removeAutorole
+      tags: [settings]
+      summary: Remove auto-role
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  # ── Custom Commands ───────────────────────────────────────────────────────
+  /guilds/{guildId}/commands:
+    get:
+      operationId: getCustomCommands
+      tags: [settings]
+      summary: Get custom commands
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Custom commands list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CustomCommand"
+    post:
+      operationId: createCustomCommand
+      tags: [settings]
+      summary: Create custom command
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CustomCommandInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomCommand"
+
+  /guilds/{guildId}/commands/{trigger}:
+    delete:
+      operationId: deleteCustomCommand
+      tags: [settings]
+      summary: Delete custom command
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: trigger
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+
+  # ── Giveaways ─────────────────────────────────────────────────────────────
+  /guilds/{guildId}/giveaways:
+    get:
+      operationId: getGiveaways
+      tags: [settings]
+      summary: Get active giveaways
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Active giveaways
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Giveaway"
+
+  # ── Logging ───────────────────────────────────────────────────────────────
+  /guilds/{guildId}/logging:
+    get:
+      operationId: getLoggingConfig
+      tags: [settings]
+      summary: Get logging config
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Logging config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoggingConfig"
+    patch:
+      operationId: updateLoggingConfig
+      tags: [settings]
+      summary: Update logging config
+      parameters:
+        - name: guildId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoggingConfigInput"
+      responses:
+        "200":
+          description: Updated logging config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoggingConfig"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    OkResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+
+    AuthUser:
+      type: object
+      required: [id, username, avatar, discriminator]
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        avatar:
+          type: ["string", "null"]
+        discriminator:
+          type: string
+        globalName:
+          type: ["string", "null"]
+
+    BotStats:
+      type: object
+      required: [guildCount, memberCount, commandCount, uptime]
+      properties:
+        guildCount:
+          type: integer
+        memberCount:
+          type: integer
+        commandCount:
+          type: integer
+        uptime:
+          type: string
+
+    Guild:
+      type: object
+      required: [id, name, icon, botPresent, memberCount]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        icon:
+          type: ["string", "null"]
+        botPresent:
+          type: boolean
+        memberCount:
+          type: integer
+        owner:
+          type: boolean
+
+    GuildDetail:
+      type: object
+      required: [id, name, icon, channels, roles]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        icon:
+          type: ["string", "null"]
+        channels:
+          type: array
+          items:
+            $ref: "#/components/schemas/Channel"
+        roles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Role"
+
+    Channel:
+      type: object
+      required: [id, name, type]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        type:
+          type: integer
+
+    Role:
+      type: object
+      required: [id, name, color]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        color:
+          type: integer
+
+    GuildSettings:
+      type: object
+      required: [guildId, prefix]
+      properties:
+        guildId:
+          type: string
+        prefix:
+          type: string
+
+    GuildSettingsInput:
+      type: object
+      properties:
+        prefix:
+          type: string
+
+    WelcomeConfig:
+      type: object
+      required: [guildId, enabled]
+      properties:
+        guildId:
+          type: string
+        enabled:
+          type: boolean
+        channelId:
+          type: ["string", "null"]
+        message:
+          type: string
+        embedColor:
+          type: string
+
+    WelcomeConfigInput:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        channelId:
+          type: ["string", "null"]
+        message:
+          type: string
+        embedColor:
+          type: string
+
+    LeaveConfig:
+      type: object
+      required: [guildId, enabled]
+      properties:
+        guildId:
+          type: string
+        enabled:
+          type: boolean
+        channelId:
+          type: ["string", "null"]
+        message:
+          type: string
+        embedColor:
+          type: string
+
+    LeaveConfigInput:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        channelId:
+          type: ["string", "null"]
+        message:
+          type: string
+        embedColor:
+          type: string
+
+    ProtectionConfig:
+      type: object
+      required: [guildId]
+      properties:
+        guildId:
+          type: string
+        antispamEnabled:
+          type: boolean
+        antispamMessages:
+          type: integer
+        antispamSeconds:
+          type: integer
+        antispamAction:
+          type: string
+        antilinkEnabled:
+          type: boolean
+        antilinkWhitelist:
+          type: array
+          items:
+            type: string
+        antiraidEnabled:
+          type: boolean
+        antiraidJoins:
+          type: integer
+        antiraidSeconds:
+          type: integer
+        antiraidAction:
+          type: string
+        antimentionsEnabled:
+          type: boolean
+        antimentionsLimit:
+          type: integer
+        badwordsEnabled:
+          type: boolean
+        badwords:
+          type: array
+          items:
+            type: string
+
+    ProtectionConfigInput:
+      type: object
+      properties:
+        antispamEnabled:
+          type: boolean
+        antispamMessages:
+          type: integer
+        antispamSeconds:
+          type: integer
+        antispamAction:
+          type: string
+        antilinkEnabled:
+          type: boolean
+        antilinkWhitelist:
+          type: array
+          items:
+            type: string
+        antiraidEnabled:
+          type: boolean
+        antiraidJoins:
+          type: integer
+        antiraidSeconds:
+          type: integer
+        antiraidAction:
+          type: string
+        antimentionsEnabled:
+          type: boolean
+        antimentionsLimit:
+          type: integer
+        badwordsEnabled:
+          type: boolean
+        badwords:
+          type: array
+          items:
+            type: string
+
+    AntinukeConfig:
+      type: object
+      required: [guildId, enabled]
+      properties:
+        guildId:
+          type: string
+        enabled:
+          type: boolean
+        banThreshold:
+          type: integer
+        kickThreshold:
+          type: integer
+        channelThreshold:
+          type: integer
+        roleThreshold:
+          type: integer
+        webhookThreshold:
+          type: integer
+        punishment:
+          type: string
+        whitelist:
+          type: array
+          items:
+            type: string
+
+    AntinukeConfigInput:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        banThreshold:
+          type: integer
+        kickThreshold:
+          type: integer
+        channelThreshold:
+          type: integer
+        roleThreshold:
+          type: integer
+        webhookThreshold:
+          type: integer
+        punishment:
+          type: string
+        whitelist:
+          type: array
+          items:
+            type: string
+
+    LevelingConfig:
+      type: object
+      required: [guildId, enabled]
+      properties:
+        guildId:
+          type: string
+        enabled:
+          type: boolean
+        xpMin:
+          type: integer
+        xpMax:
+          type: integer
+        cooldownSeconds:
+          type: integer
+        levelupChannel:
+          type: ["string", "null"]
+        levelupMessage:
+          type: string
+
+    LevelingConfigInput:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        xpMin:
+          type: integer
+        xpMax:
+          type: integer
+        cooldownSeconds:
+          type: integer
+        levelupChannel:
+          type: ["string", "null"]
+        levelupMessage:
+          type: string
+
+    LeaderboardEntry:
+      type: object
+      required: [userId, xp, level, messages]
+      properties:
+        userId:
+          type: string
+        xp:
+          type: integer
+        level:
+          type: integer
+        messages:
+          type: integer
+
+    TicketsConfig:
+      type: object
+      required: [guildId]
+      properties:
+        guildId:
+          type: string
+        panelChannel:
+          type: ["string", "null"]
+        logChannel:
+          type: ["string", "null"]
+        supportRole:
+          type: ["string", "null"]
+        categoryId:
+          type: ["string", "null"]
+        ticketCount:
+          type: integer
+
+    TicketsConfigInput:
+      type: object
+      properties:
+        panelChannel:
+          type: ["string", "null"]
+        logChannel:
+          type: ["string", "null"]
+        supportRole:
+          type: ["string", "null"]
+        categoryId:
+          type: ["string", "null"]
+
+    SuggestionsConfig:
+      type: object
+      required: [guildId, enabled]
+      properties:
+        guildId:
+          type: string
+        enabled:
+          type: boolean
+        channelId:
+          type: ["string", "null"]
+        logChannel:
+          type: ["string", "null"]
+
+    SuggestionsConfigInput:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        channelId:
+          type: ["string", "null"]
+        logChannel:
+          type: ["string", "null"]
+
+    Autorole:
+      type: object
+      required: [guildId, roleId, botOnly]
+      properties:
+        guildId:
+          type: string
+        roleId:
+          type: string
+        botOnly:
+          type: boolean
+
+    AutoroleInput:
+      type: object
+      required: [roleId]
+      properties:
+        roleId:
+          type: string
+        botOnly:
+          type: boolean
+
+    CustomCommand:
+      type: object
+      required: [guildId, trigger, response, uses]
+      properties:
+        guildId:
+          type: string
+        trigger:
+          type: string
+        response:
+          type: string
+        uses:
+          type: integer
+
+    CustomCommandInput:
+      type: object
+      required: [trigger, response]
+      properties:
+        trigger:
+          type: string
+        response:
+          type: string
+
+    Giveaway:
+      type: object
+      required: [id, guildId, channelId, hostId, prize, winners, endsAt, ended]
+      properties:
+        id:
+          type: string
+        guildId:
+          type: string
+        channelId:
+          type: string
+        hostId:
+          type: string
+        prize:
+          type: string
+        winners:
+          type: integer
+        endsAt:
+          type: integer
+        ended:
+          type: boolean
+        entryCount:
+          type: integer
+
+    LoggingConfig:
+      type: object
+      required: [guildId, enabled]
+      properties:
+        guildId:
+          type: string
+        enabled:
+          type: boolean
+        channelId:
+          type: ["string", "null"]
+
+    LoggingConfigInput:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        channelId:
+          type: ["string", "null"]
