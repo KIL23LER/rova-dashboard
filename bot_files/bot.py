@@ -6,6 +6,14 @@ bot.py — Rova Bot v4.0 ULTRA
 import asyncio
 import os
 import time
+
+# Load .env file if present (WispByte support)
+try:
+    from dotenv import load_dotenv
+    load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
+except ImportError:
+    pass
+
 import discord
 from discord.ext import commands, tasks
 from utils.dashboard_db import update_bot_stats
@@ -14,7 +22,10 @@ import api_server
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 
-TOKEN     = os.environ["DISCORD_BOT_TOKEN"]
+TOKEN = os.environ.get("DISCORD_BOT_TOKEN", "")
+if not TOKEN:
+    raise SystemExit("[ERROR] DISCORD_BOT_TOKEN غير موجود!\nأضفه في ملف .env أو في Variables بالـ panel.")
+
 CLIENT_ID = os.environ.get("DISCORD_CLIENT_ID", "")
 
 COGS = [
