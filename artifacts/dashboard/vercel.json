@@ -1,6 +1,7 @@
 {
   "buildCommand": "cd ../.. && pnpm run build:dashboard",
-  "outputDirectory": "dist",
+  "outputDirectory": "artifacts/dashboard/dist/public",
   "installCommand": "cd ../.. && pnpm install",
-  "framework": "vite"
+  "framework": null,
+  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }
