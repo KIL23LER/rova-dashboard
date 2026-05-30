@@ -1,6 +1,6 @@
 {
-  "buildCommand": "npm install -g pnpm && pnpm install && pnpm run build:dashboard",
-  "outputDirectory": "artifacts/dashboard/dist/public",
+  "buildCommand": "cd ../../ && npm install -g pnpm && pnpm install && pnpm run build:dashboard",
+  "outputDirectory": "dist/public",
   "installCommand": "echo 'install handled in build'",
   "framework": null,
   "rewrites": [
