@@ -4,30 +4,54 @@ import { logger } from "../lib/logger.js";
 
 const router: IRouter = Router();
 
-function getRedirectUri(req: import("express").Request): string {
-  const base = process.env.DASHBOARD_URL ?? `https://${process.env.REPLIT_DOMAINS?.split(",")[0] ?? "localhost:80"}`;
+function getCallbackUri(): string {
+  const base = `https://${process.env.REPLIT_DOMAINS?.split(",")[0] ?? "localhost:80"}`;
   return `${base}/api/auth/discord/callback`;
 }
 
 router.get("/auth/discord", (req, res): void => {
-  const redirectUri = getRedirectUri(req);
+  const redirectUri = getCallbackUri();
+
+  // Store the referer origin in state so we know where to redirect after OAuth
+  let returnOrigin = process.env.DASHBOARD_URL ?? "";
+  const referer = req.headers.referer;
+  if (referer) {
+    try {
+      returnOrigin = new URL(referer).origin;
+    } catch {}
+  }
+  const state = Buffer.from(JSON.stringify({ origin: returnOrigin })).toString("base64url");
+
   const params = new URLSearchParams({
     client_id: process.env.DISCORD_CLIENT_ID!,
     redirect_uri: redirectUri,
     response_type: "code",
     scope: "identify guilds",
+    state,
   });
   res.redirect(`https://discord.com/api/oauth2/authorize?${params.toString()}`);
 });
 
 router.get("/auth/discord/callback", async (req, res): Promise<void> => {
   const code = req.query["code"] as string | undefined;
+  const stateParam = req.query["state"] as string | undefined;
+
   if (!code) {
     res.redirect("/?error=no_code");
     return;
   }
+
+  // Decode origin from state
+  let redirectBase = process.env.DASHBOARD_URL ?? "";
+  if (stateParam) {
+    try {
+      const decoded = JSON.parse(Buffer.from(stateParam, "base64url").toString());
+      if (decoded.origin) redirectBase = decoded.origin;
+    } catch {}
+  }
+
   try {
-    const redirectUri = getRedirectUri(req);
+    const redirectUri = getCallbackUri();
     const tokens = await exchangeCode(code, redirectUri);
     const user = await getDiscordUser(tokens.access_token);
     (req.session as any).user = {
@@ -39,11 +63,11 @@ router.get("/auth/discord/callback", async (req, res): Promise<void> => {
     };
     (req.session as any).accessToken = tokens.access_token;
     req.log.info({ userId: user.id }, "User logged in");
-    const dashboardBase = process.env.DASHBOARD_URL ?? "";
-    res.redirect(`${dashboardBase}/servers`);
+    res.redirect(`${redirectBase}/servers`);
   } catch (err) {
     logger.error({ err }, "OAuth2 callback error");
-    res.redirect("/?error=auth_failed");
+    const errBase = process.env.DASHBOARD_URL ?? "";
+    res.redirect(`${errBase}/?error=auth_failed`);
   }
 });
 
