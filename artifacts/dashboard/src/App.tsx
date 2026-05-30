@@ -3,11 +3,17 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
-import { setBaseUrl } from "@workspace/api-client-react";
+import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
+import { useEffect } from "react";
 
-// When deployed to Vercel, point API calls at the Replit backend
+// Point API calls at the WispByte backend
 const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
 if (apiUrl) setBaseUrl(apiUrl);
+
+const TOKEN_KEY = "rova_token";
+
+// Send Bearer token with every API request
+setAuthTokenGetter(() => localStorage.getItem(TOKEN_KEY));
 
 // Components
 import { ProtectedRoute } from "@/components/protected-route";
@@ -37,6 +43,25 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+// Captures ?_token=xxx from URL after OAuth redirect and stores in localStorage
+function TokenCapture() {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("_token");
+    if (token) {
+      localStorage.setItem(TOKEN_KEY, token);
+      // Remove token from URL without reloading
+      params.delete("_token");
+      const newSearch = params.toString();
+      const newUrl = window.location.pathname + (newSearch ? "?" + newSearch : "") + window.location.hash;
+      window.history.replaceState({}, "", newUrl);
+      // Invalidate auth cache so ProtectedRoute re-checks
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    }
+  }, []);
+  return null;
+}
 
 function DashboardRouter() {
   return (
@@ -77,6 +102,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <TokenCapture />
           <Router />
         </WouterRouter>
         <Toaster />
