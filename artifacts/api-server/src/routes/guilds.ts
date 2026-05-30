@@ -1,17 +1,8 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import { getUserGuilds, getBotGuilds, getGuildChannels, getGuildRoles } from "../lib/discord.js";
+import { requireAuthMiddleware } from "../lib/botdb.js";
 
 const router: IRouter = Router();
-
-function requireAuth(req: Request, res: Response): string | null {
-  const user = (req.session as any)?.user;
-  const accessToken = (req.session as any)?.accessToken;
-  if (!user || !accessToken) {
-    res.status(401).json({ error: "Not authenticated" });
-    return null;
-  }
-  return accessToken;
-}
 
 function hasManageGuild(permissions: string): boolean {
   const perms = BigInt(permissions);
@@ -19,12 +10,12 @@ function hasManageGuild(permissions: string): boolean {
 }
 
 router.get("/guilds", async (req, res): Promise<void> => {
-  const accessToken = requireAuth(req, res);
-  if (!accessToken) return;
+  const sess = requireAuthMiddleware(req, res);
+  if (!sess) return;
 
   try {
     const [userGuilds, botGuildIds] = await Promise.all([
-      getUserGuilds(accessToken),
+      getUserGuilds(sess.accessToken),
       getBotGuilds(),
     ]);
 
@@ -47,8 +38,8 @@ router.get("/guilds", async (req, res): Promise<void> => {
 });
 
 router.get("/guilds/:guildId", async (req, res): Promise<void> => {
-  const accessToken = requireAuth(req, res);
-  if (!accessToken) return;
+  const sess = requireAuthMiddleware(req, res);
+  if (!sess) return;
 
   const guildId = Array.isArray(req.params.guildId) ? req.params.guildId[0] : req.params.guildId;
 

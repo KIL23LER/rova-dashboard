@@ -11,29 +11,16 @@ app.use(
   pinoHttp({
     logger,
     serializers: {
-      req(req) {
-        return {
-          id: req.id,
-          method: req.method,
-          url: req.url?.split("?")[0],
-        };
-      },
-      res(res) {
-        return {
-          statusCode: res.statusCode,
-        };
-      },
+      req(req) { return { id: req.id, method: req.method, url: req.url?.split("?")[0] }; },
+      res(res) { return { statusCode: res.statusCode }; },
     },
   }),
 );
 
-const allowedOrigins = process.env.DASHBOARD_URL
-  ? [process.env.DASHBOARD_URL]
-  : true;
-
+// Allow any origin so cross-origin dashboards (Vercel, etc.) work
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: (origin, cb) => cb(null, true),
     credentials: true,
   }),
 );
@@ -43,7 +30,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(
   session({
-    secret: process.env.SESSION_SECRET ?? "rova-dashboard-secret",
+    secret: process.env.SESSION_SECRET ?? "rova-dashboard-secret-2024",
     resave: false,
     saveUninitialized: false,
     cookie: {

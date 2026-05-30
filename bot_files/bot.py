@@ -1,6 +1,6 @@
 """
-bot.py — Rova Bot v4.0 ULTRA
-البوت الرئيسي + API Server في نفس العملية
+bot.py — Rova Bot v5.0 ULTRA ALL-IN-ONE
+البوت الشامل: يجمع كل ميزات بوتات الديسكورد في بوت واحد
 """
 
 import asyncio
@@ -26,17 +26,33 @@ if not TOKEN:
 CLIENT_ID = os.environ.get("DISCORD_CLIENT_ID", "")
 
 COGS = [
-    "cogs.welcome",
-    "cogs.autoroles",
-    "cogs.leveling",
+    # ── الحماية والإدارة ──
+    "cogs.moderation",
     "cogs.protection",
     "cogs.antinuke",
+    "cogs.logging",
+    # ── الترحيب والأعضاء ──
+    "cogs.welcome",
+    "cogs.autoroles",
+    "cogs.reactionroles",
+    "cogs.birthday",
+    # ── التفاعل والمجتمع ──
+    "cogs.leveling",
+    "cogs.economy",
     "cogs.tickets",
     "cogs.suggestions",
     "cogs.giveaways",
+    "cogs.polls",
+    # ── المحتوى والإعلانات ──
+    "cogs.podcast",
+    "cogs.announcements",
     "cogs.custom_commands",
-    "cogs.logging",
-    "cogs.moderation",
+    # ── الترفيه والأدوات ──
+    "cogs.fun",
+    "cogs.music",
+    "cogs.info",
+    "cogs.reminders",
+    # ── المساعدة ──
     "cogs.config",
     "cogs.help",
 ]
@@ -61,31 +77,41 @@ class RovaBot(commands.Bot):
         self.command_count = 0
 
     async def setup_hook(self):
+        print(f"\n{'─'*50}")
+        print(f"  Rova Bot v5.0 ULTRA ALL-IN-ONE")
+        print(f"{'─'*50}")
+        loaded, failed = 0, 0
         for cog in COGS:
             try:
                 await self.load_extension(cog)
                 print(f"  ✓ {cog}")
+                loaded += 1
             except Exception as e:
                 print(f"  ✗ {cog}: {e}")
+                failed += 1
+        print(f"{'─'*50}")
+        print(f"  Cogs: {loaded} مُحمَّل، {failed} فشل")
         try:
-            await self.tree.sync()
-            print("✓ Slash commands synced.")
+            synced = await self.tree.sync()
+            print(f"  ✓ Slash commands synced: {len(synced)}")
         except Exception as e:
-            print(f"✗ Slash sync failed: {e}")
+            print(f"  ✗ Slash sync failed: {e}")
         self.update_stats_loop.start()
+        print(f"{'─'*50}\n")
 
     async def on_ready(self):
-        print(f"\n{'─'*45}")
-        print(f"  Rova Bot v4.0 ULTRA  ✓ Online")
-        print(f"  User   : {self.user} ({self.user.id})")
-        print(f"  Servers: {len(self.guilds)}")
-        print(f"  Members: {sum(g.member_count for g in self.guilds)}")
-        print(f"{'─'*45}\n")
         dashboard = os.environ.get("DASHBOARD_URL", "").rstrip("/") or "your-dashboard-url"
+        servers = len(self.guilds)
+        members = sum(g.member_count for g in self.guilds)
+        print(f"\n✅ Rova Bot Online!")
+        print(f"   User   : {self.user} ({self.user.id})")
+        print(f"   Servers: {servers}")
+        print(f"   Members: {members}")
+        print(f"   Dashboard: {dashboard}\n")
         await self.change_presence(
             activity=discord.Activity(
                 type=discord.ActivityType.watching,
-                name=f"{len(self.guilds)} servers | {dashboard}",
+                name=f"{servers} servers | /help",
             )
         )
 
@@ -96,15 +122,17 @@ class RovaBot(commands.Bot):
         if isinstance(error, commands.MissingPermissions):
             await ctx.send("❌ ليس لديك صلاحية لاستخدام هذا الأمر.", delete_after=5)
         elif isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send(f"❌ ناقص: `{error.param.name}`\nاستخدم `!help {ctx.command}` للمساعدة.", delete_after=8)
+            await ctx.send(f"❌ ناقص: `{error.param.name}`\nاستخدم `/help` للمساعدة.", delete_after=8)
         elif isinstance(error, commands.BadArgument):
             await ctx.send("❌ قيمة خاطئة. تأكد من الأمر وحاول مجدداً.", delete_after=5)
         elif isinstance(error, commands.CommandNotFound):
             pass
         elif isinstance(error, commands.BotMissingPermissions):
-            await ctx.send("❌ البوت لا يملك الصلاحيات الكافية لتنفيذ هذا الأمر.", delete_after=5)
+            await ctx.send("❌ البوت لا يملك الصلاحيات الكافية.", delete_after=5)
         elif isinstance(error, commands.CheckFailure):
             await ctx.send("❌ لا يمكنك استخدام هذا الأمر.", delete_after=5)
+        elif isinstance(error, commands.CommandOnCooldown):
+            await ctx.send(f"⏳ الأمر على cooldown، انتظر {error.retry_after:.1f}ث.", delete_after=5)
         else:
             print(f"[ERROR] {ctx.command}: {error}")
 

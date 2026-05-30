@@ -1,5 +1,5 @@
 """
-init_db.py — Rova Bot v4.0 ULTRA
+init_db.py — Rova Bot v5.0 ULTRA
 ينشئ جميع الجداول في قاعدة البيانات
 """
 import sqlite3, os
@@ -12,6 +12,7 @@ def init():
     conn.executescript("""
 PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;
+
 CREATE TABLE IF NOT EXISTS guild_config (guild_id TEXT PRIMARY KEY, prefix TEXT DEFAULT '!');
 CREATE TABLE IF NOT EXISTS warnings (id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id TEXT NOT NULL, user_id TEXT NOT NULL, moderator_id TEXT NOT NULL, reason TEXT, created_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS welcome_config (guild_id TEXT PRIMARY KEY, channel_id TEXT, message TEXT DEFAULT 'مرحباً {user} في **{server}**! أنت العضو رقم **{count}**.', embed_color TEXT DEFAULT '#a855f7', enabled INTEGER DEFAULT 0);
@@ -31,6 +32,15 @@ CREATE TABLE IF NOT EXISTS custom_commands (guild_id TEXT NOT NULL, trigger TEXT
 CREATE TABLE IF NOT EXISTS bot_stats (id INTEGER PRIMARY KEY CHECK (id=1), guild_count INTEGER DEFAULT 0, member_count INTEGER DEFAULT 0, command_count INTEGER DEFAULT 0, uptime TEXT DEFAULT '0h 0m', updated_at INTEGER DEFAULT (strftime('%s','now')));
 INSERT OR IGNORE INTO bot_stats (id) VALUES (1);
 CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, user_json TEXT NOT NULL, access_token TEXT NOT NULL, expires_at INTEGER NOT NULL);
+
+CREATE TABLE IF NOT EXISTS reaction_roles (guild_id TEXT NOT NULL, message_id TEXT NOT NULL, channel_id TEXT NOT NULL, emoji TEXT NOT NULL, role_id TEXT NOT NULL, PRIMARY KEY (guild_id, message_id, emoji));
+CREATE TABLE IF NOT EXISTS birthday_config (guild_id TEXT PRIMARY KEY, channel_id TEXT, message TEXT DEFAULT 'عيد ميلاد سعيد {user}! 🎂', enabled INTEGER DEFAULT 0);
+CREATE TABLE IF NOT EXISTS birthdays (guild_id TEXT NOT NULL, user_id TEXT NOT NULL, month INTEGER NOT NULL, day INTEGER NOT NULL, PRIMARY KEY (guild_id, user_id));
+CREATE TABLE IF NOT EXISTS polls (id TEXT PRIMARY KEY, guild_id TEXT NOT NULL, channel_id TEXT NOT NULL, message_id TEXT, question TEXT NOT NULL, options TEXT NOT NULL, votes TEXT NOT NULL DEFAULT '{}', ended INTEGER DEFAULT 0, created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS reminders (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, guild_id TEXT NOT NULL, channel_id TEXT NOT NULL, message TEXT NOT NULL, remind_at INTEGER NOT NULL, done INTEGER DEFAULT 0);
+CREATE TABLE IF NOT EXISTS podcast_config (guild_id TEXT PRIMARY KEY, enabled INTEGER DEFAULT 0, role_id TEXT);
+CREATE TABLE IF NOT EXISTS podcast_episodes (id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id TEXT NOT NULL, title TEXT NOT NULL, content TEXT NOT NULL, sent_at INTEGER DEFAULT 0, created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS announcements (id INTEGER PRIMARY KEY AUTOINCREMENT, guild_id TEXT NOT NULL, channel_id TEXT NOT NULL, title TEXT, content TEXT NOT NULL, color TEXT DEFAULT '#a855f7', sent_at INTEGER NOT NULL);
     """)
     conn.commit()
     conn.close()

@@ -6,20 +6,15 @@ import NotFound from "@/pages/not-found";
 import { setBaseUrl, setAuthTokenGetter } from "@workspace/api-client-react";
 import { useEffect } from "react";
 
-// Point API calls at the WispByte backend
 const apiUrl = import.meta.env.VITE_API_URL as string | undefined;
 if (apiUrl) setBaseUrl(apiUrl);
 
 const TOKEN_KEY = "rova_token";
-
-// Send Bearer token with every API request
 setAuthTokenGetter(() => localStorage.getItem(TOKEN_KEY));
 
-// Components
 import { ProtectedRoute } from "@/components/protected-route";
 import { DashboardLayout } from "@/layouts/dashboard-layout";
 
-// Pages
 import Landing from "@/pages/landing";
 import Servers from "@/pages/servers";
 import Overview from "@/pages/dashboard/overview";
@@ -34,33 +29,44 @@ import Autoroles from "@/pages/dashboard/autoroles";
 import Commands from "@/pages/dashboard/commands";
 import Giveaways from "@/pages/dashboard/giveaways";
 import Logging from "@/pages/dashboard/logging";
+import Economy from "@/pages/dashboard/economy";
+import Podcast from "@/pages/dashboard/podcast";
+import Announcements from "@/pages/dashboard/announcements";
+import BirthdayPage from "@/pages/dashboard/birthday";
+import ReactionRoles from "@/pages/dashboard/reactionroles";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 30_000,
     },
   },
 });
 
-// Captures ?_token=xxx from URL after OAuth redirect and stores in localStorage
 function TokenCapture() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const token = params.get("_token");
     if (token) {
       localStorage.setItem(TOKEN_KEY, token);
-      // Remove token from URL without reloading
       params.delete("_token");
       const newSearch = params.toString();
       const newUrl = window.location.pathname + (newSearch ? "?" + newSearch : "") + window.location.hash;
       window.history.replaceState({}, "", newUrl);
-      // Invalidate auth cache so ProtectedRoute re-checks
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     }
   }, []);
   return null;
+}
+
+function wrap(Page: React.ComponentType) {
+  return () => (
+    <DashboardLayout>
+      <Page />
+    </DashboardLayout>
+  );
 }
 
 function DashboardRouter() {
@@ -68,18 +74,23 @@ function DashboardRouter() {
     <ProtectedRoute>
       <Switch>
         <Route path="/servers" component={Servers} />
-        <Route path="/dashboard/:guildId" component={() => <DashboardLayout><Overview /></DashboardLayout>} />
-        <Route path="/dashboard/:guildId/general" component={() => <DashboardLayout><General /></DashboardLayout>} />
-        <Route path="/dashboard/:guildId/welcome" component={() => <DashboardLayout><Welcome /></DashboardLayout>} />
-        <Route path="/dashboard/:guildId/moderation" component={() => <DashboardLayout><Moderation /></DashboardLayout>} />
-        <Route path="/dashboard/:guildId/antinuke" component={() => <DashboardLayout><Antinuke /></DashboardLayout>} />
-        <Route path="/dashboard/:guildId/leveling" component={() => <DashboardLayout><Leveling /></DashboardLayout>} />
-        <Route path="/dashboard/:guildId/tickets" component={() => <DashboardLayout><Tickets /></DashboardLayout>} />
-        <Route path="/dashboard/:guildId/suggestions" component={() => <DashboardLayout><Suggestions /></DashboardLayout>} />
-        <Route path="/dashboard/:guildId/autoroles" component={() => <DashboardLayout><Autoroles /></DashboardLayout>} />
-        <Route path="/dashboard/:guildId/commands" component={() => <DashboardLayout><Commands /></DashboardLayout>} />
-        <Route path="/dashboard/:guildId/giveaways" component={() => <DashboardLayout><Giveaways /></DashboardLayout>} />
-        <Route path="/dashboard/:guildId/logging" component={() => <DashboardLayout><Logging /></DashboardLayout>} />
+        <Route path="/dashboard/:guildId" component={wrap(Overview)} />
+        <Route path="/dashboard/:guildId/general" component={wrap(General)} />
+        <Route path="/dashboard/:guildId/welcome" component={wrap(Welcome)} />
+        <Route path="/dashboard/:guildId/moderation" component={wrap(Moderation)} />
+        <Route path="/dashboard/:guildId/antinuke" component={wrap(Antinuke)} />
+        <Route path="/dashboard/:guildId/leveling" component={wrap(Leveling)} />
+        <Route path="/dashboard/:guildId/tickets" component={wrap(Tickets)} />
+        <Route path="/dashboard/:guildId/suggestions" component={wrap(Suggestions)} />
+        <Route path="/dashboard/:guildId/autoroles" component={wrap(Autoroles)} />
+        <Route path="/dashboard/:guildId/commands" component={wrap(Commands)} />
+        <Route path="/dashboard/:guildId/giveaways" component={wrap(Giveaways)} />
+        <Route path="/dashboard/:guildId/logging" component={wrap(Logging)} />
+        <Route path="/dashboard/:guildId/economy" component={wrap(Economy)} />
+        <Route path="/dashboard/:guildId/podcast" component={wrap(Podcast)} />
+        <Route path="/dashboard/:guildId/announcements" component={wrap(Announcements)} />
+        <Route path="/dashboard/:guildId/birthday" component={wrap(BirthdayPage)} />
+        <Route path="/dashboard/:guildId/reactionroles" component={wrap(ReactionRoles)} />
         <Route component={NotFound} />
       </Switch>
     </ProtectedRoute>

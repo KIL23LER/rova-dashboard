@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 
 const DB_PATH = process.env.BOT_DB_PATH ?? path.join(process.cwd(), "data", "rova.db");
 
@@ -157,5 +158,121 @@ CREATE TABLE IF NOT EXISTS custom_commands (
     uses      INTEGER DEFAULT 0,
     PRIMARY KEY (guild_id, trigger)
 );
+CREATE TABLE IF NOT EXISTS bot_stats (
+    id            INTEGER PRIMARY KEY CHECK (id=1),
+    guild_count   INTEGER DEFAULT 0,
+    member_count  INTEGER DEFAULT 0,
+    command_count INTEGER DEFAULT 0,
+    uptime        TEXT DEFAULT '0h 0m',
+    updated_at    INTEGER DEFAULT (strftime('%s','now'))
+);
+INSERT OR IGNORE INTO bot_stats (id) VALUES (1);
+CREATE TABLE IF NOT EXISTS sessions (
+    token        TEXT PRIMARY KEY,
+    user_json    TEXT NOT NULL,
+    access_token TEXT NOT NULL,
+    expires_at   INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS reaction_roles (
+    guild_id   TEXT NOT NULL,
+    message_id TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    emoji      TEXT NOT NULL,
+    role_id    TEXT NOT NULL,
+    PRIMARY KEY (guild_id, message_id, emoji)
+);
+CREATE TABLE IF NOT EXISTS birthday_config (
+    guild_id   TEXT PRIMARY KEY,
+    channel_id TEXT,
+    message    TEXT DEFAULT 'عيد ميلاد سعيد {user}! 🎂',
+    enabled    INTEGER DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS birthdays (
+    guild_id TEXT NOT NULL,
+    user_id  TEXT NOT NULL,
+    month    INTEGER NOT NULL,
+    day      INTEGER NOT NULL,
+    PRIMARY KEY (guild_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS polls (
+    id         TEXT PRIMARY KEY,
+    guild_id   TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    message_id TEXT,
+    question   TEXT NOT NULL,
+    options    TEXT NOT NULL,
+    votes      TEXT NOT NULL DEFAULT '{}',
+    ended      INTEGER DEFAULT 0,
+    created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS reminders (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id    TEXT NOT NULL,
+    guild_id   TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    message    TEXT NOT NULL,
+    remind_at  INTEGER NOT NULL,
+    done       INTEGER DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS podcast_config (
+    guild_id TEXT PRIMARY KEY,
+    enabled  INTEGER DEFAULT 0,
+    role_id  TEXT
+);
+CREATE TABLE IF NOT EXISTS podcast_episodes (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id   TEXT NOT NULL,
+    title      TEXT NOT NULL,
+    content    TEXT NOT NULL,
+    sent_at    INTEGER DEFAULT 0,
+    created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS announcements (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id   TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    title      TEXT,
+    content    TEXT NOT NULL,
+    color      TEXT DEFAULT '#a855f7',
+    sent_at    INTEGER NOT NULL
+);
   `);
+}
+
+export function sessionCreate(user: object, accessToken: string): string {
+  const db = getDb();
+  const token = crypto.randomBytes(32).toString("hex");
+  const expires = Math.floor(Date.now() / 1000) + 7 * 24 * 3600;
+  db.prepare(
+    "INSERT OR REPLACE INTO sessions (token, user_json, access_token, expires_at) VALUES (?,?,?,?)"
+  ).run(token, JSON.stringify(user), accessToken, expires);
+  return token;
+}
+
+export function sessionGet(token: string): { user: any; accessToken: string } | null {
+  const db = getDb();
+  const now = Math.floor(Date.now() / 1000);
+  const row = db.prepare(
+    "SELECT user_json, access_token FROM sessions WHERE token=? AND expires_at>?"
+  ).get(token, now) as any;
+  if (!row) return null;
+  return { user: JSON.parse(row.user_json), accessToken: row.access_token };
+}
+
+export function sessionDelete(token: string): void {
+  const db = getDb();
+  db.prepare("DELETE FROM sessions WHERE token=?").run(token);
+}
+
+export function requireAuthMiddleware(req: any, res: any): { user: any; accessToken: string } | null {
+  const authHeader = req.headers["authorization"] ?? "";
+  if (authHeader.startsWith("Bearer ")) {
+    const sess = sessionGet(authHeader.slice(7));
+    if (sess) return sess;
+  }
+  const sessionUser = (req.session as any)?.user;
+  const sessionToken = (req.session as any)?.accessToken;
+  if (sessionUser && sessionToken) return { user: sessionUser, accessToken: sessionToken };
+  res.status(401).json({ error: "Not authenticated" });
+  return null;
 }
