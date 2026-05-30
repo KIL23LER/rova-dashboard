@@ -23,7 +23,7 @@ DISCORD_API   = "https://discord.com/api/v10"
 CLIENT_ID     = os.environ.get("DISCORD_CLIENT_ID", "")
 CLIENT_SECRET = os.environ.get("DISCORD_CLIENT_SECRET", "")
 BOT_TOKEN     = os.environ.get("DISCORD_BOT_TOKEN", "")
-API_PORT      = int(os.environ.get("API_PORT", "8080"))
+API_PORT      = int(os.environ.get("SERVER_PORT") or os.environ.get("API_PORT") or "8080")
 DASHBOARD_URL = os.environ.get("DASHBOARD_URL", "http://localhost:3000")
 SESSION_COOKIE = "rova_sess"
 IS_PROD        = os.environ.get("NODE_ENV") == "production"
