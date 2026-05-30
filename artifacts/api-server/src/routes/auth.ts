@@ -5,6 +5,9 @@ import { logger } from "../lib/logger.js";
 const router: IRouter = Router();
 
 function getCallbackUri(): string {
+  if (process.env.API_URL) {
+    return `${process.env.API_URL.replace(/\/$/, "")}/api/auth/discord/callback`;
+  }
   const base = `https://${process.env.REPLIT_DOMAINS?.split(",")[0] ?? "localhost:80"}`;
   return `${base}/api/auth/discord/callback`;
 }

@@ -7,7 +7,6 @@ import asyncio
 import os
 import time
 
-# Load .env file if present (WispByte support)
 try:
     from dotenv import load_dotenv
     load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
@@ -19,8 +18,6 @@ from discord.ext import commands, tasks
 from utils.dashboard_db import update_bot_stats
 import init_db
 import api_server
-
-# ─── Config ───────────────────────────────────────────────────────────────────
 
 TOKEN = os.environ.get("DISCORD_BOT_TOKEN", "")
 if not TOKEN:
@@ -40,9 +37,9 @@ COGS = [
     "cogs.custom_commands",
     "cogs.logging",
     "cogs.moderation",
+    "cogs.config",
+    "cogs.help",
 ]
-
-# ─── Bot ──────────────────────────────────────────────────────────────────────
 
 intents = discord.Intents.all()
 
@@ -50,8 +47,11 @@ intents = discord.Intents.all()
 async def get_prefix(bot, message: discord.Message) -> str:
     if not message.guild:
         return "!"
-    from utils.dashboard_db import get_prefix as _gp
-    return _gp(str(message.guild.id))
+    try:
+        from utils.dashboard_db import get_prefix as _gp
+        return _gp(str(message.guild.id))
+    except Exception:
+        return "!"
 
 
 class RovaBot(commands.Bot):
@@ -67,8 +67,11 @@ class RovaBot(commands.Bot):
                 print(f"  ✓ {cog}")
             except Exception as e:
                 print(f"  ✗ {cog}: {e}")
-        await self.tree.sync()
-        print("✓ Slash commands synced.")
+        try:
+            await self.tree.sync()
+            print("✓ Slash commands synced.")
+        except Exception as e:
+            print(f"✗ Slash sync failed: {e}")
         self.update_stats_loop.start()
 
     async def on_ready(self):
@@ -89,32 +92,45 @@ class RovaBot(commands.Bot):
     async def on_command(self, ctx):
         self.command_count += 1
 
+    async def on_command_error(self, ctx: commands.Context, error):
+        if isinstance(error, commands.MissingPermissions):
+            await ctx.send("❌ ليس لديك صلاحية لاستخدام هذا الأمر.", delete_after=5)
+        elif isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send(f"❌ ناقص: `{error.param.name}`\nاستخدم `!help {ctx.command}` للمساعدة.", delete_after=8)
+        elif isinstance(error, commands.BadArgument):
+            await ctx.send("❌ قيمة خاطئة. تأكد من الأمر وحاول مجدداً.", delete_after=5)
+        elif isinstance(error, commands.CommandNotFound):
+            pass
+        elif isinstance(error, commands.BotMissingPermissions):
+            await ctx.send("❌ البوت لا يملك الصلاحيات الكافية لتنفيذ هذا الأمر.", delete_after=5)
+        elif isinstance(error, commands.CheckFailure):
+            await ctx.send("❌ لا يمكنك استخدام هذا الأمر.", delete_after=5)
+        else:
+            print(f"[ERROR] {ctx.command}: {error}")
+
     @tasks.loop(minutes=5)
     async def update_stats_loop(self):
-        elapsed = int(time.time() - self.start_time)
-        h, rem = divmod(elapsed, 3600)
-        m, _ = divmod(rem, 60)
-        update_bot_stats(
-            guild_count=len(self.guilds),
-            member_count=sum(g.member_count for g in self.guilds),
-            command_count=self.command_count,
-            uptime=f"{h}h {m}m",
-        )
+        try:
+            elapsed = int(time.time() - self.start_time)
+            h, rem = divmod(elapsed, 3600)
+            m, _ = divmod(rem, 60)
+            update_bot_stats(
+                guild_count=len(self.guilds),
+                member_count=sum(g.member_count for g in self.guilds),
+                command_count=self.command_count,
+                uptime=f"{h}h {m}m",
+            )
+        except Exception as e:
+            print(f"[WARN] Stats update failed: {e}")
 
     @update_stats_loop.before_loop
     async def before_stats(self):
         await self.wait_until_ready()
 
 
-# ─── Main ─────────────────────────────────────────────────────────────────────
-
 async def main():
-    # Initialize database first
     init_db.init()
-
     bot = RovaBot()
-
-    # Run both Bot + API Server concurrently
     await asyncio.gather(
         bot.start(TOKEN),
         api_server.run_api_server(),
